@@ -1,5 +1,6 @@
 import React from 'react'
 import { hydrateRoot } from 'react-dom/client'
+import { HtmlTagsContextProvider } from 'tuono-html-tags/client'
 import { RouterProvider, createRouter } from 'tuono-router'
 
 type RouteTree = any
@@ -14,7 +15,9 @@ export function hydrate(routeTree: RouteTree): void {
   hydrateRoot(
     rootElement,
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <HtmlTagsContextProvider>
+        <RouterProvider router={router} />
+      </HtmlTagsContextProvider>
     </React.StrictMode>,
   )
 }

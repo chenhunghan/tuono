@@ -1,8 +1,10 @@
 import 'fast-text-encoding' // Mandatory for React18
 import * as React from 'react'
 import { renderToString, renderToStaticMarkup } from 'react-dom/server'
-import MetaTagsServer from 'react-meta-tags/server'
-import { MetaTagsContext } from 'react-meta-tags'
+import {
+  HtmlTagsContextProvider,
+  ServerExtractor,
+} from 'tuono-html-tags/server'
 import { RouterProvider, createRouter } from 'tuono-router'
 
 type RouteTree = any
@@ -44,37 +46,36 @@ export function serverSideRendering(routeTree: RouteTree) {
     const cssBundles = props.cssBundles as string[]
     const router = createRouter({ routeTree }) // Render the app
 
-    const metaTagsInstance = MetaTagsServer()
+    const tagsExtractor = ServerExtractor()
 
     const app = renderToString(
-      <MetaTagsContext extract={metaTagsInstance.extract}>
+      <HtmlTagsContextProvider extract={tagsExtractor.extract}>
         <RouterProvider router={router} serverProps={props} />
-      </MetaTagsContext>,
+      </HtmlTagsContextProvider>,
     )
 
-    const metaTags = metaTagsInstance.renderToString()
+    const ssrPayload = renderToStaticMarkup(
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.__TUONO_SSR_PROPS__=${payload}`,
+        }}
+      />,
+    )
 
     return `<!doctype html>
-  <html>
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	  ${metaTags}
-	  ${generateCssLinks(cssBundles, mode)}
+	<html>
+	<head>
+		${tagsExtractor.getTags()}
+		${generateCssLinks(cssBundles, mode)}
     </head>
     <body>
-      <div id="__tuono">${app}</div>
-      ${renderToStaticMarkup(
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.__TUONO_SSR_PROPS__=${payload}`,
-          }}
-        />,
-      )}
-	  ${generateJsScripts(jsBundles, mode)}
-      ${mode === 'Dev' ? VITE_DEV_AND_HMR : ''}
+	<div id="__tuono">
+		${app}
+    </div>
+	${ssrPayload}
+	${generateJsScripts(jsBundles, mode)}
+    ${mode === 'Dev' ? VITE_DEV_AND_HMR : ''}
     </body>
-  </html>
-  `
+    </html>`
   }
 }
